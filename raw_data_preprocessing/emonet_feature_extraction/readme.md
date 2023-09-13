@@ -1,0 +1,1 @@
+The trained model is awailable at https://github.com/face-analysis/emonet/tree/master/pretrained, with the name: emonet_5.pth. Please download this model, and save it under Digital-Self-Control/raw_data_preprocessing/emonet_feature_extraction/pretrained/ folder.
