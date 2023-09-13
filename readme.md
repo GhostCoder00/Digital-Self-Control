@@ -2,7 +2,7 @@
 This is the repository for Digital Self-Control. This repository is anonymized for review.
 
 ## Teaser
-![teaser](https://github.com/wmd0701/Digital-Self-Control/assets/34072813/6baafcb5-138e-4006-8b88-984842a052b5)
+![teaser_mw](https://github.com/GhostCoder00/Digital-Self-Control/assets/144137539/5942213e-6407-4dde-9eb1-d79d3d45bd02)
 
 ## Usage
 run `experiments_FL.py` for federated learning.
