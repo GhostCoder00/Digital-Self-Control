@@ -11,8 +11,17 @@ from evaluation import evaluate
 import scipy.io
 import pandas as pd
 
-def emonet_feature_extraction(file, vidpath, outpath):
+def emonet_feature_extraction(file: str, vidpath: str, outpath: str) -> None:
+  """
+    Helper function for extracting features from videos using EmoNet.
+
+    Arguments:
+        file (str): video file name.
+        vidpath (str): path to the video file.
+        outpath (str): path to save the extracted features in a csv format.        
+  """
   if '.mp4' in file or '.avi' in file:
+    #open video file
     vidfile = cv2.VideoCapture(vidpath+file)
     if (vidfile.isOpened() == False):
       print("Error opening the video file")
@@ -21,29 +30,37 @@ def emonet_feature_extraction(file, vidpath, outpath):
 
     frames = []
     features = []
+    #framewise feature extraction
     while(vidfile.isOpened()):
         ret, frame = vidfile.read()
         if ret == True:
+            # reshaping and converting the frame to torch tensor
             frame = cv2.resize(frame, dsize=(480, 640), interpolation=cv2.INTER_CUBIC)
             frame = np.reshape(frame, (3, 480, 640))
             frames.append(torch.tensor(frame.astype(np.float32)))
             frame = torch.tensor(frame.astype(np.float32))
             test_dataloader_no_flip = DataLoader(torch.unsqueeze(frame, 0), batch_size=1, shuffle=False)
-            out = evaluate(net, test_dataloader_no_flip, device=device)
+            out = evaluate(net, test_dataloader_no_flip, device=device) #out['features'] is the extracted feature with the EmoNet model
             features.append(np.asarray(out['features'].cpu()))
         else:
             break
     vidfile.release()
     
+    #save the extracted features into a csv file
     outfile = open(outpath+file[:-4]+'.csv', 'w', newline='')
     writer = csv.writer(outfile)
     for i in features:
         writer.writerow(i)
-    outfile.close()
+    outfile.close() 
 
 ###################### set dataset name here #############################
+
+"""
+  Main code for extracting features from videos using EmoNet corresponding to the four datasets.
+"""
 dataset_name = 'daisee' # options: 'korea', 'colorado', 'engagenet', 'daisee'
 
+#load pretrained EmoNet model
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 path2net = '/pretrained/emonet_5.pth'
 state_dict_path = Path(__file__).parent.joinpath('pretrained', f'emonet_5.pth')

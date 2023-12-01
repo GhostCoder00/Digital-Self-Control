@@ -3,6 +3,7 @@
 # Authors: Jean Kossaifi, Antoine Toisoul, Adrian Bulat #
 #                                                       #
 #########################################################
+#source: https://github.com/face-analysis/emonet/blob/master/emonet/models/emonet.py
 
 import torch
 import torch.nn as nn
@@ -12,14 +13,17 @@ import numpy as np
 
 nn.InstanceNorm2d = nn.BatchNorm2d
 
-def conv3x3(in_planes, out_planes, strd=1, padding=1, bias=False):
+def conv3x3(in_planes: int, out_planes: int, strd: int = 1, padding: int = 1, bias: bool = False) -> nn.Module:
     "3x3 convolution with padding"
     return nn.Conv2d(in_planes, out_planes, kernel_size=3,
                      stride=strd, padding=padding, bias=bias)
 
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_planes, out_planes):
+    """
+    Convolutional Layer structure with Instance Normalization and ReLU activation function
+    """
+    def __init__(self, in_planes: int, out_planes: int)-> None:
         super(ConvBlock, self).__init__()
         self.bn1 = nn.InstanceNorm2d(in_planes)
         self.conv1 = conv3x3(in_planes, int(out_planes / 2))
@@ -38,7 +42,7 @@ class ConvBlock(nn.Module):
         else:
             self.downsample = None
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor)-> torch.Tensor:
         residual = x
 
         out1 = self.bn1(x)
@@ -63,7 +67,10 @@ class ConvBlock(nn.Module):
         return out3
 
 class HourGlass(nn.Module):
-    def __init__(self, num_modules, depth, num_features):
+    """
+    Hourglass module
+    """
+    def __init__(self, num_modules: int, depth: int, num_features: int)-> None:
         super(HourGlass, self).__init__()
         self.num_modules = num_modules
         self.depth = depth
@@ -71,7 +78,7 @@ class HourGlass(nn.Module):
 
         self._generate_network(self.depth)
 
-    def _generate_network(self, level):
+    def _generate_network(self, level: int)-> None:
         self.add_module('b1_' + str(level), ConvBlock(256, 256))
 
         self.add_module('b2_' + str(level), ConvBlock(256, 256))
@@ -83,7 +90,7 @@ class HourGlass(nn.Module):
 
         self.add_module('b3_' + str(level), ConvBlock(256, 256))
 
-    def _forward(self, level, inp):
+    def _forward(self, level: int, inp: torch.Tensor)-> torch.Tensor:
         up1 = inp
         up1 = self._modules['b1_' + str(level)](up1)
 
@@ -105,12 +112,15 @@ class HourGlass(nn.Module):
 
         return up1 + up2
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor)-> torch.Tensor:
         return self._forward(self.depth, x)
 
 
 class EmoNet(nn.Module):
-    def __init__(self, num_modules=2, n_expression=8, n_reg=2, n_blocks=4, attention=True, temporal_smoothing=False):
+    """
+    EmoNet model: uses the predefined ConvBlock and HourGlass modules
+    """
+    def __init__(self, num_modules: int = 2, n_expression: int = 8, n_reg: int = 2, n_blocks: int = 4, attention: bool = True, temporal_smoothing: bool = False)-> None:
         super(EmoNet, self).__init__()
         self.num_modules = num_modules
         self.n_expression = n_expression
@@ -164,7 +174,7 @@ class EmoNet(nn.Module):
         self.avg_pool_2 = nn.AvgPool2d(4)
         self.emo_fc_2 = nn.Sequential(nn.Linear(256, 128), nn.BatchNorm1d(128), nn.ReLU(inplace=True), nn.Linear(128, self.n_expression + n_reg))
 
-    def forward(self, x, reset_smoothing=False):
+    def forward(self, x: torch.Tensor, reset_smoothing: bool = False)-> dict:
         
         #Resets the temporal smoothing
         if self.init_smoothing:
@@ -228,6 +238,8 @@ class EmoNet(nn.Module):
 
   
     def eval(self):
-        
+        """
+        Evaluation
+        """
         for module in self.children():
             module.eval()
