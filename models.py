@@ -16,13 +16,26 @@ FedProx_mu = 0.01
 MOON_temperature = 0.5
 MOON_mu = 1.0
 
-# LSTM model for baseline
 class LSTM(torch.nn.Module):
-    def __init__(self, args):
+    """
+    Self-defined bi-LSTM model.
+    """
+
+    def __init__(self, args: object) -> None:
+        """
+        Arguments:
+            args (argparse.Namespace): parsed argument object.
+        """
+
         super(LSTM, self).__init__()
 
         # LSTM
-        self.encoder = torch.nn.LSTM(input_size = 520, hidden_size = args.h_size, num_layers = args.n_layer, bidirectional = args.bi_dir, batch_first = True)
+        input_size = 0
+        input_size += 512 if 'emonet' in args.which_feature else 0
+        input_size += 8 if 'openface_8' in args.which_feature else 0
+        input_size += 14 if 'openface_14' in args.which_feature else 0
+        input_size += 709 if 'openface' in args.which_feature else 0
+        self.encoder = torch.nn.LSTM(input_size = input_size, hidden_size = args.h_size, num_layers = args.n_layer, bidirectional = args.bi_dir, batch_first = True)
         
         # logits layer
         logits_input_size = 2 * args.h_size if args.bi_dir else args.h_size
@@ -41,7 +54,7 @@ class LSTM(torch.nn.Module):
         # imbalance weight
         self.imba_weight = args.imba_weight.to(device)
             
-    def forward(self, x, meglass_mean = None, meglass_std = None):
+    def forward(self, x: torch.Tensor, meglass_mean: torch.Tensor = None, meglass_std: torch.Tensor = None) -> tuple[torch.Tensor]:
         x, (hn, cn) = self.encoder(x)
         x = x[:, -1, :] # many-to-one LSTM
         
@@ -55,8 +68,71 @@ class LSTM(torch.nn.Module):
         x = x[:, -1] # only need probability of class 1 (positive class)
 
         return x, h
+    
+class Dummy(torch.nn.Module):
+    """
+    Self-defined baseline classifier.
+    """
 
-def model_train(model, data_loader, num_client_epoch):
+    def __init__(self, args: object) -> None:
+        """
+        Arguments:
+            args (argparse.Namespace): parsed argument object.
+        """
+
+        super(Dummy, self).__init__()
+
+        self.classifier = torch.nn.Sequential(
+            torch.nn.Linear(6240, 3120),
+            torch.nn.ReLU(),
+            torch.nn.Linear(3120, 1560),
+            torch.nn.ReLU(),
+            torch.nn.Linear(1560, 780),
+            torch.nn.ReLU(),
+            torch.nn.Linear(780, 256),
+            torch.nn.ReLU(),
+        )
+        self.logits = torch.nn.Sequential(
+            torch.nn.Linear(256, 32),
+            torch.nn.ReLU(),
+            torch.nn.Linear(32, 2),
+            torch.nn.Softmax(dim = 1)
+        )
+
+        # optimizer
+        self.lr = args.client_lr
+        self.optim = args.client_optim
+        self.reuse_optim = args.reuse_optim
+        self.optim_state = None
+        
+        # meglass feature
+        self.use_meglass = 'meglass' in args.which_feature
+
+        # imbalance weight
+        self.imba_weight = args.imba_weight.to(device)
+            
+    def forward(self, x: torch.Tensor, meglass_mean: torch.Tensor = None, meglass_std: torch.Tensor = None) -> tuple[torch.Tensor]:
+        x = torch.flatten(x, start_dim=1, end_dim=-1)
+        
+        # meglass feature
+        if meglass_mean is not None and meglass_std is not None and self.use_meglass:
+            x = torch.cat([x, meglass_mean, meglass_std], dim = 1)
+        
+        h = self.classifier(x)
+        x = self.logits(h)
+        x = x[:, -1] # only need probability of class 1 (positive class)
+        return x, h
+
+def model_train(model: torch.nn.Module, data_loader: torch.utils.data.DataLoader, num_client_epoch: int) -> None:
+    """
+    Train a model.
+
+    Arguments:
+        model (torch.nn.Module): pytorch model.
+        data_loader (torch.utils.data.DataLoader): pytorch data loader.
+        num_client_epoch (int): number of training epochs.
+    """
+
     model.train()
     optimizer = model.optim(model.parameters(), lr = pow(10, model.lr))
     
@@ -87,7 +163,17 @@ def model_train(model, data_loader, num_client_epoch):
         model.optim_state = copy.deepcopy(optimizer.state_dict())
 
 # for FedProx
-def model_train_FedProx(model, global_model, data_loader, num_client_epoch):
+def model_train_FedProx(model: torch.nn.Module, global_model: torch.nn.Module, data_loader: torch.utils.data.DataLoader, num_client_epoch: int) -> None:
+    """
+    Train a model when FedProx is chosen for federated learning.
+
+    Arguments:
+        model (torch.nn.Module): pytorch model (client model).
+        global_model (torch.nn.Module): pytorch model (global model).
+        data_loader (torch.utils.data.DataLoader): pytorch data loader.
+        num_client_epoch (int): number of training epochs.
+    """
+
     model.train()
     optim = model.optim(model.parameters(), lr = pow(10, model.lr))
 
@@ -123,7 +209,20 @@ def model_train_FedProx(model, global_model, data_loader, num_client_epoch):
         model.optim_state = copy.deepcopy(optim.state_dict())
 
 # for MOON
-def model_train_MOON(model, global_model, data_loader, previous_features):
+def model_train_MOON(model: torch.nn.Module, global_model: torch.nn.Module, data_loader: torch.utils.data.DataLoader, previous_features: torch.Tensor) -> torch.Tensor:
+    """
+    Train a model when MOON is chosen for federated learning.
+
+    Arguments:
+        model (torch.nn.Module): pytorch model (client model).
+        global_model (torch.nn.Module): pytorch model (global model).
+        data_loader (torch.utils.data.DataLoader): pytorch data loader.
+        previous_features (torch.Tensor): features extracted by client model in last global epoch.
+
+    Returns:
+        total_features (torch.Tensor): features extracted by client model in current global epoch.
+    """
+
     model.train()
     optim = model.optim(model.parameters(), lr = pow(10, model.lr))
 
@@ -180,8 +279,17 @@ def model_train_MOON(model, global_model, data_loader, previous_features):
     
     return total_features
 
-# test model performance. This function should be called for valiadation and test.
-def model_eval(model, data_loader, wandb_log, metric_prefix = 'prefix/', tSNE = False):
+def model_eval(model: torch.nn.Module, data_loader: torch.utils.data.DataLoader, wandb_log: dict, metric_prefix: str = 'prefix/', tSNE: bool = False) -> None:
+    """
+    Evaludate the performance of a model with differnt metrics (accuracy, MCC score, precision, recall, F1 score).
+
+    Arguments:
+        model (torch.nn.Module): pytorch model.
+        data_loader (torch.utils.data.DataLoader): pytorch data loader.
+        wandb_log (dict): wandb log dictionary, with metric name as key and metric value as value.
+        metric_prefix (str): prefix for metric name.
+        tSNE (bool): whether tSNE plot should be generated or not.
+    """
     model.eval()
     epoch_labels = []
     epoch_preds  = []

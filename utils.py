@@ -5,19 +5,34 @@ import random
 import argparse
 from datetime import datetime
 
-# reproducibility
-def seed(seed):
+def seed(seed: int) -> None:
+    """
+    Set random seed.
+
+    Arguments:
+        seed (int): random seed.
+    """
+
     print('\nrandom seed:', seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     random.seed(seed)
 
-# arguement parser
-def Args(FL):
+def Args(FL: bool) -> argparse.Namespace:
+    """
+    Helper function for argument parsing.
+
+    Arguments:
+        FL (bool): whether to run federated learning or centralized learning.
+
+    Returns:
+        args (argparse.Namespace): parsed argument object.
+    """
+
     parser = argparse.ArgumentParser()
     
     # general parameters for both non-FL and FL
-    parser.add_argument('-p', '--project', type = str, default = 'korea', help = 'project name, from colorado, korea, daisee, engagenet')
+    parser.add_argument('-p', '--project', type = str, default = 'engagenet', help = 'project name, from colorado, korea, daisee, engagenet')
     parser.add_argument('--name', type = str, default = 'name', help = 'wandb run name')
     parser.add_argument('-seed', '--seed', type = int, default = 0, help = 'random seed')
     parser.add_argument('-fl_csv', '--fl_csv', type = bool, default = True, action = argparse.BooleanOptionalAction, help = 'whether to use FL data split or non-FL data split')
@@ -43,6 +58,9 @@ def Args(FL):
     # for FedAwS and TurboSVM
     parser.add_argument('-l_lr', '--logits_lr', type = float, default = -3, help = 'global learning rate for logit layer in exponent')
     parser.add_argument('-l_op', '--logits_optim', default = torch.optim.Adam, help = 'global optimizer for logit layer')
+
+    # dummy classifier
+    parser.add_argument('-dummy', '--dummy', type = bool, default = False, action = argparse.BooleanOptionalAction, help = 'whether to use dummy classifier')
     
     args = parser.parse_args()
     args.time = str(datetime.now())[5:-10]
@@ -53,49 +71,60 @@ def Args(FL):
     # reuse optimizer or not
     args.FL = FL
     args.reuse_optim = not FL
-    
+
     # features
-    args.which_feature = ['emonet', 'openface_8', 'meglass'] if args.use_meglass else ['emonet', 'openface_8']
+    args.which_feature = ['emonet', 'openface_8']
+    if args.use_meglass:
+        args.which_feature.append('meglass')
+    if args.dummy:
+        args.which_feature.append('dummy')
 
     # paths
     args.paths = {
             'colorado': {
-                        'data_split_csv_path_FL' : './datasets/dataset_summary_sidney_random_FL.csv',
-                        'data_split_csv_path_nFL': './datasets/dataset_summary_sidney_random.csv'   , 
-                        'data_csv_path'          : '../MW_vids_Sidney/fold_ids_reduced.csv'         ,
-                        'emonet_path'            : '../MW_vids_Sidney/emonet/'                      ,
-                        'openface_path'          : '../MW_vids_Sidney/OpenFace2.2.0/'               ,
-                        'meglass_path'           : '../MW_vids_Sidney/meglass/'                     ,
+                        'data_split_csv_path_FL' : './datasets/colorado/dataset_summary_colorado_random_FL.csv',
+                        'data_split_csv_path_nFL': './datasets/colorado/dataset_summary_colorado_random.csv'   , 
+                        'data_csv_path'          : './datasets/colorado/fold_ids_reduced.csv'                  ,
+                        'emonet_path'            : '/data/mind_wandering/colorado/emonet/'                     ,
+                        'openface_path'          : '/data/mind_wandering/colorado/openface/'                   ,
+                        'meglass_path'           : '/data/mind_wandering/colorado/emonet/'                     ,
                         },
             'korea'   : {
-                        'data_split_csv_path_FL' : './datasets/dataset_summary_korea_random_FL.csv'                 ,
-                        'data_split_csv_path_nFL': './datasets/dataset_summary_korea_random.csv'                    ,
-                        'data_csv_path'          : '../Mind_Wandering_Detection_Data_Korea/fold_ids.csv'            ,
-                        'emonet_path'            : '../Mind_Wandering_Detection_Data_Korea/features/emonet/'        ,
-                        'openface_path'          : '../Mind_Wandering_Detection_Data_Korea/features/OpenFace2.2.0/' ,
-                        'meglass_path'           : '../Mind_Wandering_Detection_Data_Korea/features/meglass/'       ,
+                        'data_split_csv_path_FL' : './datasets/korea/dataset_summary_korea_random_FL.csv',
+                        'data_split_csv_path_nFL': './datasets/korea/dataset_summary_korea_random.csv'   ,
+                        'data_csv_path'          : './datasets/korea/fold_ids.csv'                       ,
+                        'emonet_path'            : '/data/mind_wandering/korea/emonet/'                  ,
+                        'openface_path'          : '/data/mind_wandering/korea/openface/'                ,
+                        'meglass_path'           : '/data/mind_wandering/korea/meglass/'                 ,
                         },
             'daisee'  : {
-                        'data_split_csv_path_FL' : './datasets/dataset_summary_DAiSEE_boredom.csv',
-                        'data_split_csv_path_nFL': './datasets/dataset_summary_DAiSEE_boredom.csv',
-                        'data_csv_path'          : '../DAiSEE/fold_ids.csv'                       ,
-                        'emonet_path'            : '../DAiSEE/emonet/'                            ,
-                        'openface_path'          : '../DAiSEE/Openface/'                          ,
-                        'meglass_path'           : '../DAiSEE/meglass/'                           ,
+                        'data_split_csv_path_FL' : './datasets/daisee/dataset_summary_daisee_boredom.csv',
+                        'data_split_csv_path_nFL': './datasets/daisee/dataset_summary_daisee_boredom.csv',
+                        'data_csv_path'          : './datasets/daisee/fold_ids.csv'                      ,
+                        'emonet_path'            : '/data/mind_wandering/daisee/emonet/'                 ,
+                        'openface_path'          : '/data/mind_wandering/daisee/openface/'               ,
+                        'meglass_path'           : '/data/mind_wandering/daisee/meglass/'                ,
                         },
             'engagenet':{
-                        'data_split_csv_path_FL' : './datasets/dataset_summary_EngageNet.csv',
-                        'data_split_csv_path_nFL': './datasets/dataset_summary_EngageNet.csv',
-                        'data_csv_path'          : '../EngageNet/fold_ids.csv'               ,
-                        'emonet_path'            : '../EngageNet/emonet/'                    ,
-                        'openface_path'          : '../EngageNet/Openface/'                  ,
-                        'meglass_path'           : '../EngageNet/meglass/'                   ,
+                        'data_split_csv_path_FL' : './datasets/engagenet/dataset_summary_engagenet.csv',
+                        'data_split_csv_path_nFL': './datasets/engagenet/dataset_summary_engagenet.csv',
+                        'data_csv_path'          : './datasets/engagenet/fold_ids.csv'                 ,
+                        'emonet_path'            : '/data/mind_wandering/engagenet/emonet/'            ,
+                        'openface_path'          : '/data/mind_wandering/engagenet/openface/'          ,
+                        'meglass_path'           : '/data/mind_wandering/engagenet/meglass/'           ,
                         }
         }
 
     return args
         
-def switch_FL(args):
+def switch_FL(args: argparse.Namespace) -> None:
+    """
+    Set hyperparameters according to the choice of federated learning algorithm.
+
+    Arguments:
+        args (argparse.Namespace): parsed argument object.
+    """
+
     match args.switch_FL:
 
         case 'FedAvg':
@@ -121,16 +150,34 @@ def switch_FL(args):
         case _:
             raise Exception("wrong switch_FL:", args.switch_FL)
 
-# get weights for classes 0 and 1
-def get_imbalance_weight(labels):
+def get_imbalance_weight(labels: torch.Tensor) -> torch.Tensor:
+    """
+    Calculate class imbalance and assign a weight to each class.
+
+    Arguments:
+        labels (torch.Tensor): all sample labels.
+
+    Returns:
+        weight (torch.Tensor): weight per class.
+    """
     unique_labels, unique_counts = labels.unique(return_counts = True, sorted = True)
-    assert(unique_labels.equal(torch.tensor([0, 1])))
+    assert(unique_labels.equal(torch.tensor([0., 1.])))
     sum_counts = sum(unique_counts)
     weight = torch.tensor([unique_counts[1] / sum_counts, unique_counts[0] / sum_counts])
     return weight
 
-# average model parameters
-def weighted_avg_params(params, weights = None):
+def weighted_avg_params(params: list[dict[str, torch.Tensor]], weights: list[int] = None) -> dict:
+    """
+    Compute weighted average of client models.
+
+    Argument:
+        params (list[dict[str, torch.Tensor]]): client model parameters. Each element in this list is the state_dict of a client model.
+        weights (list[int]): weight per client. Each element in this list is the number of samples of a client.
+
+    Returns:
+        params_avg (dict): averaged global model parameters (state_dict), which can be loaded using global_model.load_state_dict.
+    """
+
     if weights == None:
         weights = [1.0] * len(params)
         
@@ -142,17 +189,35 @@ def weighted_avg_params(params, weights = None):
         params_avg[key] = torch.div(params_avg[key], sum(weights))
     return params_avg
 
-# compute weighted average
-def weighted_avg(values, weights):
+def weighted_avg(values: any, weights: any) -> any:
+    """
+    Calculate weighted average of a vector of values.
+
+    Arguments:
+        values (any): values. Can be list, torch.Tensor, numpy.ndarray, etc.
+        weights (any): weights. Can be list, torch.Tensor, numpy.ndarray, etc.
+
+    Returns:
+        any: weighted average value.
+    """
+
     sum_values = 0
     for v, w in zip(values, weights):
         sum_values += v *w
     return sum_values / sum(weights)
 
-# get weight vector
-# w: weight per class
-# output : weight per sample
-def weight_to_vec(w, y):
+def weight_to_vec(w: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    """
+    Assign weight to each sample.
+
+    Arguments:
+        w (torch.Tensor): weight per class.
+        y (torch.Tensor): all sample labels.
+
+    Returns:
+        wv (torch.Tensor): weight per sample.
+    """
+
     w = w.to(y.device)
     wv = w[y.long()]
     return wv

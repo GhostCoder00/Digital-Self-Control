@@ -2,12 +2,18 @@ import torch
 import wandb
 
 # self-defined functions
-from models import LSTM
+from models import LSTM, Dummy
 from client import get_clients
 from server import federated_learning
 from utils import Args, seed, switch_FL
 
-def main_FL(args):
+def main_FL(args: object) -> None:
+    """
+    Helper function for federated learning. It calls federated_learning in server.py in runtime.
+
+    Arguments:
+        args (argparse.Namespace): parsed argument object. 
+    """
     # some print
     print("\nusing device:", 'cuda' if torch.cuda.is_available() else 'cpu')
     
@@ -18,10 +24,10 @@ def main_FL(args):
     train_clients, test_clients = get_clients(args)
 
     # model initialization
-    global_model = LSTM(args)
+    global_model = Dummy(args) if args.dummy else LSTM(args)
 
     # wandb init
-    wandb.init(project = args.project, name = 'BCE ' + args.name, config = args.__dict__)
+    wandb.init(project = args.project, name = args.name + ' ' + global_model.__class__.__name__, config = args.__dict__)
     
     # federated learning
     federated_learning(args, train_clients, test_clients, global_model)

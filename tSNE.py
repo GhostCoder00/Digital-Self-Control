@@ -1,12 +1,24 @@
 import numpy  as np
 import matplotlib.pyplot as plt
 import wandb
+import torch
 from sklearn.manifold import TSNE
 
 # ignore tSNE crash (RuntimeWarning: invalid value encountered in divide X_embedded = X_embedded / np.std(X_embedded[:, 0]) * 1e-4)
 np.seterr(divide='ignore', invalid='ignore')
 
-def tsne_visualization(features, labels, phase, wandb_log, n_components=2):
+def tsne_visualization(features: torch.Tensor, labels, phase: torch.Tensor, wandb_log: dict, n_components: int = 2) -> None:
+    """
+    Plots t-SNE visualization of features and labels.
+
+    Arguments:
+        features (any): input features. Can be list, torch.Tensor, numpy.ndarray, etc.
+        labels (any): ground truth labels. Can be list, torch.Tensor, numpy.ndarray, etc.
+        phase (str): phase. Can be 'train/', 'test/', or ''.
+        wandb_log (dict): adding the plot to the wandb log dictionary for visualization.
+        n_components (int): number of components. Can be 2 or 3.
+    """
+
     if n_components == 2:
         if phase != '':
             tsne = TSNE(n_components=2, random_state=0)

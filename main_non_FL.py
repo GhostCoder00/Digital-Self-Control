@@ -3,7 +3,7 @@ import wandb
 import tqdm
 
 # self-defined functions
-from models import LSTM, model_train, model_eval
+from models import LSTM, Dummy, model_train, model_eval
 from utils import Args, seed
 from client import get_clients
 
@@ -14,7 +14,13 @@ clients, train_clients, valid_clients, test_clients = [], [], [], []
 # GPU
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
-def main_non_FL(args):
+def main_non_FL(args: object) -> None:
+    """
+    Main function for centralized learning.
+
+    Arguments:
+        args (argparse.Namespace): parsed argument object.
+    """
     # some print
     print("\nusing device:", device)
     
@@ -33,11 +39,11 @@ def main_non_FL(args):
     print(  "length of test  dataset:", len(test_dataset ))
     
     # model initialization
-    model = LSTM(args)
+    model = Dummy(args) if args.dummy else LSTM(args)
     model.to(device)
 
     # wandb init
-    wandb.init(project = args.project + '-lr-search', name = 'BCE, fl_csv ' + str(args.fl_csv) + ' ' + args.name, config = args.__dict__)
+    wandb.init(project = args.project, name = args.name + ' ' + model.__class__.__name__, config = args.__dict__)
     
     # performance before training
     wandb_log = {}

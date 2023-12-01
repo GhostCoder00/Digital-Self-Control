@@ -8,9 +8,19 @@ from utils import get_imbalance_weight
 # GPU
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# client is an object, which contains its own dataset, dataloader, local model copy (for simplification, only local parameters) and training loop fucntion
 class Client(object):
-    def __init__(self, args, client_name, client_data_dict):
+    """
+    Self-defined client object.
+    """
+
+    def __init__(self, args: object, client_name: str, client_data_dict: dict[str, torch.Tensor]) -> None:
+        """
+        Arguments:
+            args (argparse.Namespace): parsed argument object.
+            client_name (str): client name / id.
+            client_data_dict (dict[str, torch.Tensor]): a dictionary holding all data of this client, with 'data', 'labels', 'glasses', and 'meglass' as keys 
+        """
+        
         super(Client, self).__init__()
         self.client_name  = client_name
         self.client_epoch = args.client_epoch
@@ -26,7 +36,19 @@ class Client(object):
         self.dataset = DatasetMW(client_data_dict['data'], client_data_dict['labels'], client_data_dict['glasses'], client_data_dict['meglass'])
         self.data_loader = torch.utils.data.DataLoader(self.dataset, batch_size = self.batch_size, shuffle = not self.MOON, drop_last = True)
     
-    def local_train(self, client_model, global_model, previous_feature):
+    def local_train(self, client_model: torch.nn.Module, global_model: torch.nn.Module, previous_feature: torch.Tensor) -> torch.Tensor:
+        """
+        Client local training.
+
+        Arguments:
+            client_model (torch.nn.Module): pytorch model (client local model).
+            global_model (torch.nn.Module): pytorch model (global model).
+            previous_feature (torch.Tensor): features extracted by client model in last global epoch, useful for MOON.
+
+        Returns:
+            last_client_features (torch.Tensor): features extracted by client model in current global epoch.
+        """
+
         client_model.to(device)
 
         client_features = []
@@ -57,7 +79,18 @@ class Client(object):
         
         return last_client_features
 
-def get_clients(args):
+def get_clients(args: object) -> tuple[list[Client]]:
+    """
+    Read data into dictionary and intialize client objects using the data dictionary.
+
+    Arguments:
+        args (argparse.Namespace): parsed argument object.
+
+    Returns:
+        train_clients (list[Client]): training clients.
+        test_clients (list[Client]): test / validation clients.
+    """
+    
     # get data dictionary
     data_dict = get_data_dict(args.paths[args.project]['data_split_csv_path_FL' if args.fl_csv else 'data_split_csv_path_nFL'], 
                               args.paths[args.project]['data_csv_path'], 

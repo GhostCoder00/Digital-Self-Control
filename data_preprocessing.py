@@ -2,12 +2,36 @@ import pandas as pd
 import numpy  as np
 import torch
 import os
+from skimage.measure import block_reduce
 
-def get_data_dict(data_split_csv_path, data_csv_path, emonet_path, openface_path, meglass_path, which_feature = ['emonet', 'openface_8'], seq_length = 124):
+def get_data_dict(data_split_csv_path: str, 
+                  data_csv_path: str, 
+                  emonet_path: str, 
+                  openface_path: str, 
+                  meglass_path: str, 
+                  which_feature: list[str] = ['emonet', 'openface_8'], 
+                  seq_length: int = 124
+                  ) -> dict[str, dict[str, torch.Tensor]]:
+    """
+    Read data into a dictionary.
+
+    Arguments:
+        data_split_csv_path (str): path to data split csv file.
+        data_csv_path (str): path to meta data csv file.
+        emonet_path (str): path to emonet feature directory.
+        openface_path (str): path to openface feature directory.
+        meglass_path (str): path to meglass feature directory.
+        which_feature (list[str]): a list strings specifying which features should be used.
+        seq_length (int): number of frames of each sample.
+
+    Returns:
+        data_dict (dict[str, dict[str, torch.Tensor]]): a dictionary that contains all data with user id as key. Each value entry is also a dictionary with 'data', 'labels', 'meglass', 'glasses' as keys.
+    """
+
     use_emonet      = 'emonet'   in which_feature
-    use_openface_8  = 'openface_8' in which_feature
-    use_openface_16 = 'openface_16' in which_feature
-    use_openface    = ('openface' in which_feature) or use_openface_8 or use_openface_16
+    use_openface_8  = 'openface_8' in which_feature  # only use 8 eye features from all openface features
+    use_openface_14 = 'openface_14' in which_feature # only use 14 eye features from all openface features
+    use_openface    = ('openface' in which_feature) or use_openface_8 or use_openface_14
     use_meglass     = 'meglass' in which_feature
     
     df    = pd.read_csv(data_csv_path)
@@ -48,7 +72,7 @@ def get_data_dict(data_split_csv_path, data_csv_path, emonet_path, openface_path
                 emonet_features = pd.read_csv(em_file_path, header=None).to_numpy()
                 if emonet_features.shape[0] < seq_length:
                     continue
-                if 'sidney' in data_split_csv_path:
+                if 'colorado' in data_split_csv_path:
                     for frame_idx, frame in enumerate(emonet_features):
                         if frame_idx == 0 and successful[frame_idx] == 0: # never fulfilled
                             first_successful = successful.index(next(filter(lambda x: x!=0, successful)))
@@ -57,9 +81,9 @@ def get_data_dict(data_split_csv_path, data_csv_path, emonet_path, openface_path
                         else:
                             last_successful_frame = frame
                 if emonet_features.shape[0] >= seq_length:
-                    if 'sidney' in data_split_csv_path:
+                    if 'colorado' in data_split_csv_path:
                         emonet_features = emonet_features[:seq_length]
-                    elif 'korea' in data_split_csv_path or 'DAiSEE' in data_split_csv_path or 'EngageNet' in data_split_csv_path:
+                    elif 'korea' in data_split_csv_path or 'daisee' in data_split_csv_path or 'engagenet' in data_split_csv_path:
                         for failed in failed_idx:
                             emonet_features = np.delete(emonet_features, (failed), axis=0)
                         downsample_idxs    = np.linspace(0, len(emonet_features) - 1, seq_length).astype(int)
@@ -72,7 +96,7 @@ def get_data_dict(data_split_csv_path, data_csv_path, emonet_path, openface_path
             
             if os.path.exists(mg_file_path) and use_meglass:
                 meglass_features = pd.read_csv(mg_file_path, header=None).to_numpy()
-                if 'sidney' in data_split_csv_path:
+                if 'colorado' in data_split_csv_path:
                     for frame_idx, frame in enumerate(emonet_features):
                         if frame_idx == 0 and successful[frame_idx] == 0: # never fulfilled
                             first_successful = successful.index(next(filter(lambda x: x!=0, successful)))
@@ -81,9 +105,9 @@ def get_data_dict(data_split_csv_path, data_csv_path, emonet_path, openface_path
                         else:
                             last_successful_frame_g = meglass_features[frame_idx]
                 if meglass_features.shape[0] >= seq_length:
-                    if 'sidney' in data_split_csv_path:
+                    if 'colorado' in data_split_csv_path:
                         meglass_features = meglass_features[:seq_length]
-                    elif 'korea' in data_split_csv_path or 'DAiSEE' in data_split_csv_path or 'EngageNet' in data_split_csv_path:
+                    elif 'korea' in data_split_csv_path or 'daisee' in data_split_csv_path or 'engagenet' in data_split_csv_path:
                         for failed in failed_idx:
                             meglass_features = np.delete(meglass_features, (failed), axis=0)
                         downsample_idxs    = np.linspace(0, len(meglass_features) - 1, seq_length).astype(int)
@@ -101,7 +125,7 @@ def get_data_dict(data_split_csv_path, data_csv_path, emonet_path, openface_path
                 openface_pd = pd.read_csv(file_path)
                 successful = openface_pd[' success']
                 openface_pd = openface_pd.to_numpy()
-                if 'sidney' in data_split_csv_path:
+                if 'colorado' in data_split_csv_path:
                     openface_pd = openface_pd[:seq_length]
                     for frame_idx, frame in enumerate(openface_pd):
                         if frame_idx < 125:
@@ -115,17 +139,18 @@ def get_data_dict(data_split_csv_path, data_csv_path, emonet_path, openface_path
                 openface_features  = np.delete(openface_pd, [0, 1, 2, 3, 4], axis=1)      # drop first five columns as they are not needed
                 if use_openface_8:
                     openface_features = openface_features[:, 0:8]      # selecting only gaze features
-                elif use_openface_16:
-                    openface_features = np.delete(openface_pd, range(8, 287), axis=1)
-                    openface_features = np.delete(openface_pd, range(15, len(openface_features)), axis=1)
+                elif use_openface_14:
+                    openface_features = np.delete(openface_features, range(8, 287), axis=1)
+                    openface_features = np.delete(openface_features, range(13, len(openface_features)), axis=1)
                 
-                
+                if openface_features.shape[0] < 300:
+                    print(uuid)
                 if openface_features.shape[0] >= seq_length:
-                    if 'sidney' in data_split_csv_path:
+                    if 'colorado' in data_split_csv_path:
                         openface_features = openface_features[:seq_length]
-                    elif 'korea' in data_split_csv_path or 'DAiSEE' in data_split_csv_path or 'EngageNet' in data_split_csv_path:
+                    elif 'korea' in data_split_csv_path or 'daisee' in data_split_csv_path or 'engagenet' in data_split_csv_path:
                         for failed in failed_idx:
-                            openface_pd = np.delete(openface_pd, (failed), axis=0)
+                            openface_features = np.delete(openface_features, (failed), axis=0)
                         downsample_idxs   = np.linspace(0, len(openface_features) - 1, seq_length).astype(int)
                         openface_features = openface_features[downsample_idxs]   
                     else:
@@ -136,11 +161,18 @@ def get_data_dict(data_split_csv_path, data_csv_path, emonet_path, openface_path
         elif not os.path.exists(of_file_path) and use_openface:
             continue
 
-        data_dict[name]['data']  .append(np.concatenate(data, axis = 1))
-        data_dict[name]['labels'].append(1.0 if mw == 'MW' else 0.0)
-        if use_meglass:
-            data_dict[name]['meglass'].append(np.concatenate(meglass, axis = 1))
-        data_dict[name]['glasses'].append(1.0 if glasses == 'Y' else 0.0)
+        if len(data) > 0:
+            data_dict[name]['data']  .append(np.concatenate(data, axis = 1))
+            data_dict[name]['labels'].append(1.0 if mw == 'MW' else 0.0)
+            if use_meglass:
+                data_dict[name]['meglass'].append(np.concatenate(meglass, axis = 1))
+            data_dict[name]['glasses'].append(1.0 if glasses == 'Y' else 0.0)
+    
+    if 'dummy' in which_feature:
+        #for our baseline classifier, we use the same extracted features from OpenFace and EmoNet, but we averaged every 10 frames to reduce the input dimension
+        for _, v in data_dict.items():
+            for idx, element in enumerate(v['data']):
+                v['data'][idx] = block_reduce(element[4:, :], block_size=(10,1), func=np.mean)
 
     # to torch tensors
     for _, v in data_dict.items():
@@ -151,10 +183,20 @@ def get_data_dict(data_split_csv_path, data_csv_path, emonet_path, openface_path
 
     return data_dict
  
-# dataset class
-# x: data sequence  y: MW label  g: glass label  meglass: meglass feature
 class DatasetMW(torch.utils.data.Dataset):
-    def __init__(self, x, y, g, meglass):
+    """
+    Self-defined dataset class.
+    """
+
+    def __init__(self, x: torch.Tensor, y: torch.Tensor, g: torch.Tensor, meglass: torch.Tensor) -> None:
+        """
+        Arguments:
+            x (torch.Tensor): concatenated emonet and openface features.
+            y (torch.Tensor): class labels (e.g. mind wandering vs. non mind wandering).
+            g (torch.Tensor): glass labels (e.g. with glass vs. without glass).
+            meglass (torch.Tensor): meglass features.
+        """
+
         self.x = x
         self.y = y
         self.g = g
@@ -167,10 +209,10 @@ class DatasetMW(torch.utils.data.Dataset):
             self.g_mean = torch.zeros(len(y))
             self.g_std  = torch.zeros(len(y))
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.y)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor]:
         x = self.x[idx] 
         y = self.y[idx]
         g = self.g[idx]

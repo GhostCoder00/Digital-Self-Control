@@ -14,8 +14,18 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # FedAwS cosine similarity margin
 margin = 0
-    
-def federated_learning(args, train_clients, test_clients, global_model):
+
+def federated_learning(args: object, train_clients: list[object], test_clients: list[object], global_model: torch.nn.Module) -> None:
+    """
+    Main loop for federated learning.
+
+    Arguments:
+        args (argparse.Namespace): parsed argument object.
+        train_clients (list[Client]): training clients.
+        test_clients (list[Client]): test / validation clients.
+        global_model (torch.nn.Module): pytorch model (global model on the server).
+    """
+
     # determine how many clients are updated per global round
     num_train_client  = len(train_clients)
     if args.client_C < 1.0: # proportion
@@ -77,14 +87,31 @@ def federated_learning(args, train_clients, test_clients, global_model):
     # global_model.to('cpu')
     # wandb.finish()
 
-# global optimizer is useless for FedAvg
-def FedAvg(global_model, client_models, client_weights, *_):
+def FedAvg(global_model: torch.nn.Module, client_models: list[torch.nn.Module], client_weights: list[int], *_) -> None:
+    """
+    Federated learning algorithm FedAvg.
+
+    Arguments:
+        global_model (torch.nn.Module): pytorch model (global model).
+        client_models (list[torch.nn.Module]): pytorch models (client models).
+        client_weights (list[int]): number of samples per client.
+    """
+
     client_params  = [m.state_dict() for m in client_models]
     new_global_params = weighted_avg_params(params = client_params, weights = client_weights)
     global_model.load_state_dict(new_global_params)
 
-# FedOpt
-def FedOpt(global_model, client_models, client_weights, global_optim, *_):
+def FedOpt(global_model: torch.nn.Module, client_models: list[torch.nn.Module], client_weights: list[int], global_optim: torch.optim, *_) -> None:
+    """
+    Federated learning algorithm FedOpt. Depending on the choice of optimizer, it can be deviated into different variates like FedAdam and FedAMS.
+
+    Arguments:
+        global_model (torch.nn.Module): pytorch model (global model).
+        client_models (list[torch.nn.Module]): pytorch models (client models).
+        client_weights (list[int]): number of samples per client.
+        global_optim (torch.optim): pytorch optimizer for global model.
+    """
+
     client_params  = [m.state_dict() for m in client_models]
     new_global_params = weighted_avg_params(params = client_params, weights = client_weights)
     
@@ -98,8 +125,23 @@ def FedOpt(global_model, client_models, client_weights, global_optim, *_):
     global_optim.step()
     global_optim.zero_grad()
 
-# FedAwS
-def FedAwS(global_model, client_models, client_weights, global_optim, logits_optim, *_):
+def FedAwS(global_model: torch.nn.Module, 
+           client_models: list[torch.nn.Module], 
+           client_weights: list[int], 
+           global_optim: torch.optim, 
+           logits_optim: torch.optim, 
+           *_) -> None:
+    """
+    Federated learning algorithm FedAwS.
+
+    Arguments:
+        global_model (torch.nn.Module): pytorch model (global model).
+        client_models (list[torch.nn.Module]): pytorch models (client models).
+        client_weights (list[int]): number of samples per client.
+        global_optim (torch.optim): (useless) pytorch optimizer for global model.
+        logits_optim (torch.optim): pytorch optimizer for logit layer of global model.
+    """
+
     FedAvg(global_model, client_models, client_weights)
     global_model.train()
     
@@ -114,8 +156,35 @@ def FedAwS(global_model, client_models, client_weights, global_optim, logits_opt
     logits_optim.step()
     logits_optim.zero_grad()
 
-# TurboSVM
-def TurboSVM(global_model, client_models, client_weights, global_optim, logits_optim, current_global_epoch, num_global_epoch, class_C = 1.0, base_agg = 'FedAvg', agg_svc = True, spreadout = True):
+def TurboSVM(global_model: torch.nn.Module, 
+             client_models: list[torch.nn.Module], 
+             client_weights: list[int], 
+             global_optim: torch.optim, 
+             logits_optim: torch.optim, 
+             current_global_epoch: int, 
+             num_global_epoch: int, 
+             class_C: int|float = 1.0, 
+             base_agg: str = 'FedAvg', 
+             agg_svc: bool = True, 
+             spreadout: bool = True
+             ) -> None:
+    """
+    Federated learning algorithm TurboSVM-FL.
+
+    Arguments:
+        global_model (torch.nn.Module): pytorch model (global model).
+        client_models (list[torch.nn.Module]): pytorch models (client models).
+        client_weights (list[int]): number of samples per client.
+        global_optim (torch.optim): pytorch optimizer for global model.
+        logits_optim (torch.optim): pytorch optimizer for logit layer of global model.
+        current_global_epoch (int): current global aggregation round.
+        num_global_epoch (int): total number of global aggregation rounds.
+        class_C (int|float): number of classes used to train SVM. Can be int (absolute value) or float (proportion).
+        base_agg (str): FL aggregation algorithm for encoder (all layers of global model but logit layer).
+        agg_svc (bool): whether to aggregate only client models that form support vectors or all client models.
+        spreadout (bool): whether to apply max-margin spread-out regularization or not.
+    """
+
     # aggregate client models
     assert(base_agg == 'FedAvg' or base_agg == 'FedOpt')
     eval(base_agg)(global_model, client_models, client_weights, global_optim)

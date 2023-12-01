@@ -2,14 +2,14 @@
 This is the repository for Digital Self-Control. This repository is anonymized for review.
 
 ## Teaser
-![teaser_mw](https://github.com/GhostCoder00/Digital-Self-Control/assets/144137539/5942213e-6407-4dde-9eb1-d79d3d45bd02)
+![teaser](https://github.com/wmd0701/Digital-Self-Control/assets/34072813/6baafcb5-138e-4006-8b88-984842a052b5)
 
 ## Usage
 run `experiments_FL.py` for federated learning.
 
 run `experiments_nFL` for centralized learning.
 
-For detailed arguement settings please check `utils.py`. 
+For detailed argument settings please check `utils.py`. 
 
 ## Environment
 Important installed libraries and their versions by **2023 September 7th**:
@@ -30,4 +30,4 @@ Others:
 ## Datasets
 We conducted experiments using four datasets: Colorado (https://ieeexplore.ieee.org/abstract/document/8680698), Korea (https://nmsl.kaist.ac.kr/projects/attention/), Engagenet (https://github.com/engagenet/engagenet_baselines), and DAISEE (https://people.iith.ac.in/vineethnb/resources/daisee/index.html). Please contact the corresponding authors for data access if necessary.
 
-Please dive into the `raw_data_preprocessing` directory for further instructions.
+Please dive into the `raw_data_preprocessing` directory for further instructions on data preprocessing.
