@@ -14,8 +14,23 @@ from sklearn.metrics import accuracy_score, f1_score, matthews_corrcoef
 from utils import get_weight_vector, get_weight_dict
 from data_preprocessing import data_normalization
 
+"""
+This file contains the model, dataloader, dataset, and training loop for glasses detection.
+The resulting model is saved as meglass_resnet18.pth.
+"""
+
 class DatasetG(torch.utils.data.Dataset):
-    def __init__(self, labels, data, global_weight_dict=None):
+    """
+    Dataset class for glasses detection.
+    """
+    def __init__(self, labels: torch.Tensor, data: torch.Tensor, global_weight_dict: dict = None)-> None:
+        """
+        Arguments:
+            labels {torch.Tensor} -- labels of the dataset
+            data {torch.Tensor} -- features of the dataset
+            global_weight_dict {dict} -- dictionary of weights for each class
+        """
+
         self.labels       = labels
         self.data         = data
         if global_weight_dict is None:
@@ -25,10 +40,10 @@ class DatasetG(torch.utils.data.Dataset):
         self.weights = get_weight_vector(self.weight_dict, labels)
         self.data = data_normalization(self.data)
         
-    def __len__(self):
+    def __len__(self)-> int:
         return len(self.labels)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int)-> dict:
         label   = self.labels [idx]
         weight  = self.weights[idx]
         feature = self.data   [idx]   
@@ -37,13 +52,18 @@ class DatasetG(torch.utils.data.Dataset):
                 'weight': weight}
 
 class GlassesModel(nn.Module):
-    def __init__(self):
+    """
+    Model for glasses detection.
+    """
+    def __init__(self)-> None:
         super().__init__()
 
+        # loading a pretrained ResNet18 model
         self.model = torch.hub.load('pytorch/vision', 'resnet18', pretrained=True)
 
         in_features_b7 = 1000
-            
+
+        #for saving the feature vectors before the last linear layer    
         self.glasses = nn.Sequential(
                        nn.BatchNorm1d(in_features_b7),
                        nn.Linear(in_features_b7, 512),
@@ -52,6 +72,7 @@ class GlassesModel(nn.Module):
                        nn.Linear(512, 256),
                        nn.ReLU()
                        )
+        # last linear layer for binary glass detection
         self.glasses_final = nn.Sequential(
                        nn.BatchNorm1d(num_features=256),
                        nn.Dropout(0.4),
@@ -59,7 +80,7 @@ class GlassesModel(nn.Module):
                        nn.Sigmoid()
                        )
         
-    def forward(self, x):
+    def forward(self, x: torch.Tensor)-> torch.Tensor:
         x = self.model(x)          # shape of x will be: (N,2560,1,1)                   
         x = torch.flatten(x, start_dim=1)
 
@@ -69,7 +90,7 @@ class GlassesModel(nn.Module):
         return pred, g_features
     
     @property
-    def save(self, path):
+    def save(self, path: str):
         print('Saving model... %s' % path)
         torch.save(self, path)
 
@@ -83,17 +104,21 @@ fone_weight = 'weighted'
 #datasets
 imagenames = []
 labels = []
-datapath = '../MeGlass_120x120/'
+datapath = '../MeGlass_120x120/' #path to the dataset
+
+#read the labels and image names
 with open(datapath+'labels.txt') as f:
     lines = f.readlines()
     for line in lines:
         imagenames.append(line.split(' ')[0])
         labels.append(int(line.split(' ')[1][0]))
 
+# divide the dataset into train, validation and test sets
 random_state_par = 6
 train_val_set_names, test_set_names = train_test_split(imagenames, train_size=0.90, random_state=random_state_par)
 train_set_names, val_set_names = train_test_split(train_val_set_names, train_size=0.88, random_state=random_state_par)
 
+# data preprocessing
 train_data = torch.zeros(len(train_set_names), 3, 120, 120)
 val_data = torch.zeros(len(val_set_names), 3, 120, 120)
 test_data = torch.zeros(len(test_set_names), 3, 120, 120)
@@ -118,10 +143,12 @@ for i, img_name in enumerate(imagenames):
             test_data[test_idx] = torch.tensor(img)
             test_label[test_idx] = labels[img_idx]
 
+#datasets
 train_set = DatasetG(torch.Tensor(train_label), torch.Tensor(train_data))
 val_set = DatasetG(torch.Tensor(val_label), torch.Tensor(val_data))
 test_set = DatasetG(torch.Tensor(test_label), torch.Tensor(test_data))
 
+#dataloaders
 train_dataloader  = torch.utils.data.DataLoader(train_set, batch_size = batch_size, shuffle = True, drop_last=True)
 val_dataloader  = torch.utils.data.DataLoader(val_set, batch_size = batch_size, shuffle = True, drop_last=True)
 test_dataloader   = torch.utils.data.DataLoader(test_set , batch_size = 1, shuffle = True, drop_last=True)
@@ -143,6 +170,7 @@ model = GlassesModel()
 model.to(device)
 optim = torch.optim.Adam(model.parameters(), **optim_args)
 
+#training loop
 for epoch in tqdm.tqdm(range(num_epochs)):
     #train
     model.train()
@@ -198,6 +226,7 @@ for epoch in tqdm.tqdm(range(num_epochs)):
 
         avg_val_loss = val_epoch_loss/(len(val_dataloader))
 
+#test
 model.eval()
 with torch.no_grad():
     test_epoch_loss = 0.0
@@ -217,5 +246,5 @@ with torch.no_grad():
     wandb.log({"test/acc": test_epoch_acc/(len(test_dataloader.sampler)),
             "test/f1": test_epoch_fone/(len(test_dataloader.sampler))})
 
-torch.save(model.state_dict(), './resnet18'+str(lr)+'.pth')
+torch.save(model.state_dict(), './resnet18'+str(lr)+'.pth') #save the model
 wandb.finish()

@@ -8,8 +8,15 @@ from torch import nn
 from pathlib import Path
 from torch.utils.data import DataLoader
 
+"""
+This file saves the features extracted from the MeGlass model.
+"""
+
 class GlassesModel(nn.Module):
-    def __init__(self):
+    """
+    Model for glasses detection.
+    """
+    def __init__(self)-> None:
         super().__init__()
 
         self.model = torch.hub.load('pytorch/vision', 'resnet18', pretrained=True)
@@ -31,7 +38,7 @@ class GlassesModel(nn.Module):
                        nn.Sigmoid()
                        )
         
-    def forward(self, x):
+    def forward(self, x: torch.Tensor)-> torch.Tensor:
         x = self.model(x)          # shape of x will be: (N,2560,1,1)                   
         x = torch.flatten(x, start_dim=1)
 
@@ -41,11 +48,20 @@ class GlassesModel(nn.Module):
         return pred, g_features
     
     @property
-    def save(self, path):
+    def save(self, path: str):
         print('Saving model... %s' % path)
         torch.save(self, path)
 
-def meglass_feature_extraction(file, vidpath, outpath):
+def meglass_feature_extraction(file: str, vidpath: str, outpath: str) -> None:
+  """
+  Saves features from the MeGlass model.
+  
+  Args:
+    file (str): name of video file
+    vidpath (str): path to video file
+    outpath (str): path to save extracted features in a csv format
+  """
+
   if ('.mp4' in file or '.avi' in file) and (not os.path.exists(outpath+file[:-4]+'.csv')):
     vidfile = cv2.VideoCapture(vidpath+'/'+subdir+'/'+subdir1+'/'+file)
     if (vidfile.isOpened() == False):
@@ -64,12 +80,13 @@ def meglass_feature_extraction(file, vidpath, outpath):
             test_dataloader = DataLoader(torch.unsqueeze(frame, 0), batch_size=1, shuffle=False)
             for batch in test_dataloader:
                 inputs = batch.to(device)
-                preds, feats = net(inputs)
+                preds, feats = net(inputs) # feature extraction
                 feats = torch.squeeze(feats.detach().cpu())
-                features.append(np.asarray(feats))
+                features.append(np.asarray(feats)) #feature collection
         else:
             break
     vidfile.release()
+    # save extracted features in a csv file
     outfile = open(outpath+file[:-4]+'.csv', 'w', newline='')
     writer = csv.writer(outfile)
     for i in features:
@@ -80,7 +97,7 @@ def meglass_feature_extraction(file, vidpath, outpath):
 dataset_name = 'daisee' # options: 'korea', 'colorado', 'engagenet', 'daisee'
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
-path2net = '/MeGlass-glasses_detection_model/meglass_resnet18.pth'
+path2net = '/MeGlass-glasses_detection_model/meglass_resnet18.pth' # trained model
 state_dict = torch.load(str(path2net), map_location='cpu')
 state_dict = {k.replace('module.',''):v for k,v in state_dict.items()}
 net = GlassesModel().to(device)
