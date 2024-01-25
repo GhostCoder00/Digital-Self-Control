@@ -18,7 +18,7 @@ class Client(object):
         Arguments:
             args (argparse.Namespace): parsed argument object.
             client_name (str): client name / id.
-            client_data_dict (dict[str, torch.Tensor]): a dictionary holding all data of this client, with 'data', 'labels', 'glasses', and 'meglass' as keys 
+            client_data_dict (dict[str, torch.Tensor]): a dictionary holding all data of this client, with 'data', 'labels', 'glasses', and 'meglass' as keys.
         """
         
         super(Client, self).__init__()

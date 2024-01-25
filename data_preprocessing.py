@@ -143,8 +143,7 @@ def get_data_dict(data_split_csv_path: str,
                     openface_features = np.delete(openface_features, range(8, 287), axis=1)
                     openface_features = np.delete(openface_features, range(13, len(openface_features)), axis=1)
                 
-                if openface_features.shape[0] < 300:
-                    print(uuid)
+                
                 if openface_features.shape[0] >= seq_length:
                     if 'colorado' in data_split_csv_path:
                         openface_features = openface_features[:seq_length]
@@ -192,8 +191,8 @@ class DatasetMW(torch.utils.data.Dataset):
         """
         Arguments:
             x (torch.Tensor): concatenated emonet and openface features.
-            y (torch.Tensor): class labels (e.g. mind wandering vs. non mind wandering).
-            g (torch.Tensor): glass labels (e.g. with glass vs. without glass).
+            y (torch.Tensor): ground truth class labels (e.g. mind wandering vs. non mind wandering).
+            g (torch.Tensor): ground truth glass labels (e.g. with glass vs. without glass).
             meglass (torch.Tensor): meglass features.
         """
 
@@ -210,9 +209,24 @@ class DatasetMW(torch.utils.data.Dataset):
             self.g_std  = torch.zeros(len(y))
 
     def __len__(self) -> int:
+        """
+        Returns:
+            (int): size of dataset.
+        """
         return len(self.y)
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor]:
+        """
+        Arguments:
+            idx (int): index to sample.
+
+        Returns:
+            x (torch.Tensor): sample feature.
+            y (torch.Tensor): ground truth class label (e.g. mind wandering vs. non mind wandering).
+            g (torch.Tensor): ground truth glass label (e.g. with glass vs. without glass).
+            g_mean (torch.Tensor): mean of meglass feature.
+            g_std (torch.Tensor): std of meglass feature.
+        """
         x = self.x[idx] 
         y = self.y[idx]
         g = self.g[idx]

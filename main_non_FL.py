@@ -43,7 +43,7 @@ def main_non_FL(args: object) -> None:
     model.to(device)
 
     # wandb init
-    wandb.init(project = args.project, name = args.name + ' ' + model.__class__.__name__, config = args.__dict__)
+    wandb.init(project = args.project, name = args.name + ' ' + model.__class__.__name__, config = args.__dict__, anonymous = "allow")
     
     # performance before training
     wandb_log = {}

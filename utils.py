@@ -32,7 +32,7 @@ def Args(FL: bool) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     
     # general parameters for both non-FL and FL
-    parser.add_argument('-p', '--project', type = str, default = 'engagenet', help = 'project name, from colorado, korea, daisee, engagenet')
+    parser.add_argument('-p', '--project', type = str, default = 'korea', help = 'project name, from colorado, korea, daisee, engagenet')
     parser.add_argument('--name', type = str, default = 'name', help = 'wandb run name')
     parser.add_argument('-seed', '--seed', type = int, default = 0, help = 'random seed')
     parser.add_argument('-fl_csv', '--fl_csv', type = bool, default = True, action = argparse.BooleanOptionalAction, help = 'whether to use FL data split or non-FL data split')
@@ -85,33 +85,33 @@ def Args(FL: bool) -> argparse.Namespace:
                         'data_split_csv_path_FL' : './datasets/colorado/dataset_summary_colorado_random_FL.csv',
                         'data_split_csv_path_nFL': './datasets/colorado/dataset_summary_colorado_random.csv'   , 
                         'data_csv_path'          : './datasets/colorado/fold_ids_reduced.csv'                  ,
-                        'emonet_path'            : '/data/mind_wandering/colorado/emonet/'                     ,
-                        'openface_path'          : '/data/mind_wandering/colorado/openface/'                   ,
-                        'meglass_path'           : '/data/mind_wandering/colorado/emonet/'                     ,
+                        'emonet_path'            : '../colorado/emonet/'                     ,
+                        'openface_path'          : '../colorado/openface/'                   ,
+                        'meglass_path'           : '../colorado/emonet/'                     ,
                         },
             'korea'   : {
                         'data_split_csv_path_FL' : './datasets/korea/dataset_summary_korea_random_FL.csv',
                         'data_split_csv_path_nFL': './datasets/korea/dataset_summary_korea_random.csv'   ,
                         'data_csv_path'          : './datasets/korea/fold_ids.csv'                       ,
-                        'emonet_path'            : '/data/mind_wandering/korea/emonet/'                  ,
-                        'openface_path'          : '/data/mind_wandering/korea/openface/'                ,
-                        'meglass_path'           : '/data/mind_wandering/korea/meglass/'                 ,
+                        'emonet_path'            : '../korea/emonet/'                  ,
+                        'openface_path'          : '../korea/openface/'                ,
+                        'meglass_path'           : '../korea/meglass/'                 ,
                         },
             'daisee'  : {
                         'data_split_csv_path_FL' : './datasets/daisee/dataset_summary_daisee_boredom.csv',
                         'data_split_csv_path_nFL': './datasets/daisee/dataset_summary_daisee_boredom.csv',
                         'data_csv_path'          : './datasets/daisee/fold_ids.csv'                      ,
-                        'emonet_path'            : '/data/mind_wandering/daisee/emonet/'                 ,
-                        'openface_path'          : '/data/mind_wandering/daisee/openface/'               ,
-                        'meglass_path'           : '/data/mind_wandering/daisee/meglass/'                ,
+                        'emonet_path'            : '../daisee/emonet/'                 ,
+                        'openface_path'          : '../daisee/openface/'               ,
+                        'meglass_path'           : '../daisee/meglass/'                ,
                         },
             'engagenet':{
                         'data_split_csv_path_FL' : './datasets/engagenet/dataset_summary_engagenet.csv',
                         'data_split_csv_path_nFL': './datasets/engagenet/dataset_summary_engagenet.csv',
                         'data_csv_path'          : './datasets/engagenet/fold_ids.csv'                 ,
-                        'emonet_path'            : '/data/mind_wandering/engagenet/emonet/'            ,
-                        'openface_path'          : '/data/mind_wandering/engagenet/openface/'          ,
-                        'meglass_path'           : '/data/mind_wandering/engagenet/meglass/'           ,
+                        'emonet_path'            : '../engagenet/emonet/'            ,
+                        'openface_path'          : '../engagenet/openface/'          ,
+                        'meglass_path'           : '../engagenet/meglass/'           ,
                         }
         }
 

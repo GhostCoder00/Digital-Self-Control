@@ -55,6 +55,17 @@ class LSTM(torch.nn.Module):
         self.imba_weight = args.imba_weight.to(device)
             
     def forward(self, x: torch.Tensor, meglass_mean: torch.Tensor = None, meglass_std: torch.Tensor = None) -> tuple[torch.Tensor]:
+        """
+        Arguments:
+            x (torch.Tensor): input feature tensor.
+            meglass_mean (torch.Tensor): mean of meglass feature.
+            meglass_std (torch.Tensor): std of meglass feature.
+
+        Returns:
+            x (torch.Tensor): logits (not softmaxed yet).
+            h (torch.Tensor): latent features (useful for tSNE plot and some FL algorithms).
+        """
+
         x, (hn, cn) = self.encoder(x)
         x = x[:, -1, :] # many-to-one LSTM
         
@@ -92,6 +103,7 @@ class Dummy(torch.nn.Module):
             torch.nn.Linear(780, 256),
             torch.nn.ReLU(),
         )
+        
         self.logits = torch.nn.Sequential(
             torch.nn.Linear(256, 32),
             torch.nn.ReLU(),
@@ -112,6 +124,17 @@ class Dummy(torch.nn.Module):
         self.imba_weight = args.imba_weight.to(device)
             
     def forward(self, x: torch.Tensor, meglass_mean: torch.Tensor = None, meglass_std: torch.Tensor = None) -> tuple[torch.Tensor]:
+        """
+        Arguments:
+            x (torch.Tensor): input feature tensor.
+            meglass_mean (torch.Tensor): mean of meglass feature.
+            meglass_std (torch.Tensor): std of meglass feature.
+
+        Returns:
+            x (torch.Tensor): logits (not softmaxed yet).
+            h (torch.Tensor): latent features (useful for tSNE plot and some FL algorithms).
+        """
+
         x = torch.flatten(x, start_dim=1, end_dim=-1)
         
         # meglass feature
