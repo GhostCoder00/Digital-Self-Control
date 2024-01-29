@@ -1,13 +1,13 @@
 # Digital Self-Control
 
 > **[UMAP 2024] Digital Self-Control: A Solution for Enhancing Self-Regulation in Online Learning**.
+> Digital Self-Control a video-based cognitive distraction detection system based on facial expressions and gaze features, which could aid learners in keeping their attention. It addresses the challenges associated with eyeglass wearers and improves the model performance with additional features containing information about the presence of glasses. It utilizes federated learning to safeguards users' data privacy. 
 
-> Digital Self-Control a video-based cognitive distraction detection system based on facial expressions and gaze features, which could aid learners in keeping their attention. It utilizes federated learning to safeguards users' data privacy. Through its privacy-by-design approach, Digitial Self-Control introduces an innovative and novel solution that has the potential for real-time support. It also addresses the challenges associated with eyeglass wearers and improves the model performance with additional features containing information about the presence of glasses. 
-
-This repository is anonymized for review.
+* This repository is anonymized for review.
+* Because of the page limit of UMAP and the limit of EasyChair, we provide the supplementary material here. Please check `UMAP24_Digital_Self_Control_Appendix.pdf`.
 
 ## 🖼️ Teaser
-![Teaser](teaser_mw.png)
+<img src="https://github.com/wmd0701/Digital-Self-Control/assets/34072813/6baafcb5-138e-4006-8b88-984842a052b5" width="700">
 
 ## 💁 Usage
 1. Download data and carry out data preprocessing following the instructions below.
